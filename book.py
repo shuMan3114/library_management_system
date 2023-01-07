@@ -15,13 +15,12 @@ class Book:
         self.author = author
         self.ISBN = ISBN
         self.publication = publication
-        self.category = genre
+        self.genre = genre
         self.price = price
         self.quantity = quantity
         self.books_borrowed = 0
         self.times_borrowed = 0
         self.unavailable = False
-        self.waitlist = []
     
     def update_quantity(self,new_quantity):
         self.quantity += new_quantity
@@ -29,14 +28,13 @@ class Book:
 
     def update_borrowed_book_status(self,UserID):
         if(not self.unavailable):
-            books_left = self.quantity - self.books_borrowed
-            if(books_left - 1 == 0):
+            books_left = self.quantity - self.books_borrowed - 1
+            if(books_left):
                 self.unavailable = True
             self.books_borrowed += 1
             self.times_borrowed += 1
             return True
         else:
-            self.waitlist.append(UserID).sort()
             return False
     
 
@@ -44,6 +42,4 @@ class Book:
         self.books_borrowed -= 1
         if(self.unavailable):
             self.unavailable = False
-            if(self.waitlist):
-                return f"User : {self.waitlist[0]} may borrow {self.name} now"
         return "Book returned successfully!"
