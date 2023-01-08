@@ -26,7 +26,7 @@ class Book:
         self.quantity += new_quantity
         
 
-    def update_borrowed_book_status(self,UserID):
+    def update_borrowed_book_status(self):
         if(not self.unavailable):
             books_left = self.quantity - self.books_borrowed - 1
             if(books_left):

@@ -11,15 +11,22 @@ conn = pyodbc.connect('Driver={SQL Server};'
         'Database=test_database;'
         'Trusted_Connection=yes;')
 
-def select(cursor,display_fields,tname,conditon = None,order_by=None,desc=None,print=1):
+def select(cursor,display_fields,tname,condition = None,group_by=None,having=None,order_by=None,desc=None,print=1):
     if(display_fields[0] == '*'):
         fields = "*"
     else:
         fields = ",".join(display_fields)
-    if(conditon == None):
-        query_str = f'SELECT {fields} FROM {tname}'
+    
+    if(condition == None):
+        query_str = f'SELECT {fields} FROM {tname} '
     else:
-        query_str = f'SELECT {fields} FROM {tname} WHERE {conditon}'
+        query_str = f'SELECT {fields} FROM {tname} WHERE {condition} '
+    
+    if(group_by != None):
+        query_str += f'GROUP BY {group_by} '
+    if(having != None):
+        query_str += f'HAVING {having} '
+    
     if(desc == True):
         query_str += f'ORDER BY {order_by} DESC;'
     elif(desc == False):

@@ -24,13 +24,13 @@ def optionValidator(prompt,escape_pormpt="Return",error_prompt="Wrong Option",lo
         menu_choice = lower_limit - 1
     new_prompt = prompt + f'Enter {menu_choice} to {escape_pormpt}'   
     if(lower_limit != None):
-        option_selected = input(prompt)
+        option_selected = input(new_prompt)
         while option_selected not in [str(x) for x in range(lower_limit -1 , higher_limit + 1)]:
             print(error_prompt)
             option_selected = input(new_prompt)
         return int(option_selected)
     else:
-        option_selected = input(prompt)
+        option_selected = input(new_prompt)
         while option_selected != str(check_value) or option_selected != str(menu_choice):
             print(error_prompt)
             option_selected = input(new_prompt)
@@ -105,8 +105,11 @@ class Library():
                 verdict = optionValidator(prompts[4],error_prompt=prompts[6],check_value=search_result.password)
                 if(verdict == password):
                     print("Log in success!")
-                    cur_user = User(search_result)
-                    return [cur_user]
+                    if(level == 1):
+                        cur_user = Admin(search_result)
+                    else:
+                        cur_user = User(search_result)
+                    return cur_user
                 else:
                     return -2
             else:
@@ -171,7 +174,7 @@ class Library():
                     print(result)
             books_selected = eval(input(prompts[5]))
             if(books_selected[0] == "-1"):
-                return
+                return []
             else:
                 books_selected = [f"'{x.upper()}'" for x in books_selected]
                 sql.select(self.cursor,['*'],self.booksTable,[f'{attribute_db[param_selected]} IN ({books_selected})'])
@@ -188,14 +191,90 @@ class Library():
             'postal code' : self.postal_code,
             'Number of Books' : int(self.Bseed[5:]),
             'Number of Users' : int(self.Useed[5:]),
-            'Number of Employees' : int(self.Aseed[5:])
+            'Number of Admins' : int(self.Aseed[5:])
         };
         for key,val in genInfo.items():
             print(f'{key} : {val}')
-    
 
-    def export_to_csv():
+    def user_loop(self,User):
+        prompts = {
+            1 : "Enter 1 to borrow a book\nEnter 2 to return a book\nEnter 3 to search for a book\nEnter 4 to update credentials or pay dues\nEnter 5 to edit wishlist\nEnter 6 to logout: ",
+            2 : "Enter 1 to use the result of the search query and 2 to enter BOOKID: ",
+            3 : "Enter BOOKID(s)(as a list)(enter - [-1] to escape): ",
+            4 : "Thank you for using the library!",
+            5 : "Enter 1 to search for a book and 2 to directly borrow/return: ",
+            6 : "Enter 1 to add to wishlist or 2 to continue: ",
+            7 : "Enter choice: ",
+            8 : "Enter new attr: "
+        }
+        temp_list = []
+        while True :
+            print(prompts)
+            option = optionValidator(prompts[1],lower_limit=1,higher_limit=6)
+            if(option == 0):
+                pass
+            elif(option == 6):
+                print(prompts[4])
+                sql.update(self.cursor,self.userTable,list(User.__dict__.keys()),[f"'{str(x)}'" for x in list(User.__dict__.values())],f'ID = "{User.UserID}"')
+                return 1
+            elif(option in [1,2]):
+                optionsDict = {
+                    1 : User.borrow_book(),
+                    2 : User.return_book()
+                }
+                if(temp_list):
+                    path = optionValidator(prompts[2],lower_limit=1,higher_limit=2)
+                    if(not path):
+                        pass
+                    elif(path == 1):
+                        print(*temp_list,sep="\n")
+                    b_list = eval(prompts[3])
+                    if(b_list[0] == -1):
+                        pass
+                    for b in b_list:
+                        new_book = Book(sql.select(self.cursor,['*'],self.booksTable,f"bookID = '{b}'"))
+                        verdict = optionsDict[option](new_book)
+                        if(verdict == -2):
+                            u_input = optionValidator(prompts[6],lower_limit=1,higher_limit=2)
+                            if(u_input == 1):
+                                User.edit_wishlist()
+                else:
+                    print("No previous search query exists!")
+                    b_list = eval(prompts[3])
+            elif(option in [3,5]):
+                if(option == 3):
+                    temp_list = self.searchBooks()
+                    if(temp_list == -1):
+                        print("temp_list reverted to being empty!")
+                        temp_list = []
+                else:
+                    User.edit_wishlist()
+            else:
+                attrs = ['f_name','l_name','contact','password']
+                for x in range(len(attrs)):
+                    print(f'{x} for {attrs[x]}')
+                attr_no = optionValidator(prompts[7],lower_limit=0,higher_limit=3)
+                if(attr_no == -1):
+                    pass
+                elif(attr_no== 3):
+                    User.password = pass_input()
+                else:
+                    new_Attr = input(prompts[8])
+                    if(attr_no == 0):
+                        User.f_name = new_Attr
+                    elif(attr_no == 1):
+                        User.l_name = new_Attr
+                    else:
+                        User.contact = new_Attr
+            
+
+    def admin_loop(Admin):
+        prompts = {
+            1 : "Enter 1 to plot graphs\nEnter 2 to Remove User(s)\nEnter 3 to manage books\nEnter 4 to log out: ",
+            2 : "Enter 1 to Search for Book(s) and 2 to enter directly: ",
+        }
         pass
 
-    def main_loop(self):
-        pass
+def main_loop():
+
+    pass

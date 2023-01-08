@@ -33,24 +33,26 @@ class User:
         self.fname = userDf['first_name'][0]
         self.lname = userDf['last_name'][0]
         self.contact = userDf['email'][0]
-        self.joinDate = date.today()
         self.borrowedList = []
         self.wishlist = []
         self.password = userDf['hashed_password'][0]
         self.dues = 0
 
     def borrow_book(self,Book):
-        verdict = Book.update_borrowed_book_status(self.UserID)
+        verdict = Book.update_borrowed_book_status()
         if(verdict):
             self.borrowedList.append(Book.BookID)
-            return f"Borrowed Book successfully!"
+            print("Borrowed Book successfully!")
+            return 1
+        else:
+            print("Book list is full! Please consider adding book to wishlist")
+            return -2
     
 
     def return_book(self,Book):
         message = Book.update_returned_book_status()
-        if(self.wishlist):
-            additional_msg = f"{self.wishlist[0]} can be borrowed!"
-        return f"{message}\n{additional_msg}"
+        print("Book returned successfully! ")
+
 
     def edit_wishlist(self):
         prompts = {

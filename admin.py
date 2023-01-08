@@ -24,26 +24,18 @@ class Admin:
         self.userTable = userTable
         self.booksTable = BooksTable
     
-    def verify_login(self,entered_password):
-        hasher = bcrypt.using(rounds=13)
-        verdict = hasher.verify(entered_password, self.password)
-        return verdict
+    def add_books(self):
+        pass
+    def drop_books(self):
+        pass
+    def edit_books(self):
+        pass
 
+    def update_user_dues(self,fees,userID):
+        pass
 
-    def forgot_password(self):
-            code = 'alphanumeric_string'
-            send_mail(self.contact,code)
-            code_entered = input(f"Enter code sent to {format_mail(self.contact)}: ")
-            while code_entered != code:
-                code_entered = input(f"Enter code sent to {format_mail(self.contact)}: ")
-            return pass_input(self)
+    def delete_user_account(self,userID):
+        pass
 
-
-    def change_password(self):
-        hasher = bcrypt.using(rounds=13)
-        pass_entered = getpass(prompt = f"Enter password: ")
-        if(hasher.verify(pass_input, self.password)):
-            verdict = pass_input(self)
-        else:
-            verdict = "Wrong password"
-        return verdict
+    def graphing(self):
+        pass
