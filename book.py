@@ -9,18 +9,18 @@ borrowed - ISBN, userID , date_borrowed , date_returned(predictive)
 
 class Book:
 
-    def __init__(self,bookID,b_name,author,publication,ISBN,genre,price,quantity):
-        self.BookID = bookID
-        self.name = b_name
-        self.author = author
-        self.ISBN = ISBN
-        self.publication = publication
-        self.genre = genre
-        self.price = price
-        self.quantity = quantity
-        self.books_borrowed = 0
-        self.times_borrowed = 0
-        self.unavailable = False
+    def __init__(self,bookDf):
+        self.BookID = bookDf['bookID']
+        self.name = bookDf['name'] 
+        self.author = bookDf['author'] 
+        self.ISBN = bookDf['ISBN'] 
+        self.publication = bookDf['publication']
+        self.genre = bookDf['genre']
+        self.price = bookDf['price']
+        self.quantity = bookDf['quantity']
+        self.books_borrowed = bookDf['books_borrowed']
+        self.times_borrowed = bookDf['times_borrowed']
+        self.unavailable = bookDf['unavailable'] 
     
     def update_quantity(self,new_quantity):
         self.quantity += new_quantity

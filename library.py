@@ -2,50 +2,13 @@ from user import User
 from admin import Admin
 from book import Book
 from datetime import date
-import sql_functions as sql
+import pandas as pd
+import pyodbc 
 import getpass
 from passlib.hash import bcrypt
+import sql_functions as sql
+from modules.options import optionValidator,pass_input,ID_generation
 
-
-def pass_input():
-    new_password = getpass.getpass(prompt="Enter new password: ")
-    re_entered_pass = getpass.getpass(prompt="Re-enter new password: ")
-    while new_password != re_entered_pass:
-        re_entered_pass = getpass.getpass(prompt="Incorrect! Passwords do not match! Re-enter: ")
-    hasher = bcrypt.using(rounds=13)
-    new_pass = hasher.hash(new_password)
-    return new_pass
-
-
-def optionValidator(prompt,escape_pormpt="Return",error_prompt="Wrong Option",lower_limit=None,higher_limit=None,check_value=None):
-    if(lower_limit == None):
-        menu_choice = -1
-    else:
-        menu_choice = lower_limit - 1
-    new_prompt = prompt + f'Enter {menu_choice} to {escape_pormpt}'   
-    if(lower_limit != None):
-        option_selected = input(new_prompt)
-        while option_selected not in [str(x) for x in range(lower_limit -1 , higher_limit + 1)]:
-            print(error_prompt)
-            option_selected = input(new_prompt)
-        return int(option_selected)
-    else:
-        option_selected = input(new_prompt)
-        while option_selected != str(check_value) or option_selected != str(menu_choice):
-            print(error_prompt)
-            option_selected = input(new_prompt)
-        return option_selected
-
-
-def ID_generation(seed):
-    num = int(seed[5:])
-    num += 1
-    padding = len(str(num))%4
-    if(padding):
-        num = "".join((4-padding)*['0']) + str(num)
-    else:
-        num = str(num)
-    return num
 
 
 class Library():
@@ -75,7 +38,7 @@ class Library():
         hasher = bcrypt.using(rounds=13)
         tdate = date.today()
         prompts = {
-            1 : "Enter 1 to login and 2 to sign up: ",
+            1 : "Enter 1 to login and 2 to sign up 3 to exit: ",
             2 : "Enter 1 for admin and 2 for user: ",
             3 : "Enter ID: ",
             4 : "Enter password: ",
@@ -89,8 +52,8 @@ class Library():
             12 : "User already exists please login!: "
         }
         verdict = optionValidator(prompts[1],lower_limit=1,higher_limit=2)
-        if(not verdict):
-            return -1
+        if(verdict in [0,3]):
+            return 0
         elif(verdict == 1):
             level = optionValidator(prompts[2],lower_limit=1,higher_limit=2)
             if(not level):
@@ -109,7 +72,7 @@ class Library():
                         cur_user = Admin(search_result)
                     else:
                         cur_user = User(search_result)
-                    return cur_user
+                    return [level,cur_user]
                 else:
                     return -2
             else:
@@ -124,7 +87,7 @@ class Library():
             contact = input(prompts[9])
             if(level == 1):
                 ID = ID_generation(self.Aseed)
-                extra_fields = [[],[],0]
+                extra_fields = ['[]','[]','0']
                 search_result = sql.select(self.cursor,['*'],self.adminTable,f"contact = '{contact}'",print=0)
             else:
                 ID = ID_generation(self.Useed)
@@ -144,29 +107,29 @@ class Library():
                 cur_user = User(sql.select(self.cursor,['*'],self.userTable,f"ID = '{ID}'",print=0))
                 self.Useed = ID
             print("Sign Up Process complete!")
-            return cur_user
+            return [level,cur_user]
 
 
     def searchBooks(self):
         attribute_db = ['ID','name','author','ISBN','publication','genre','times_borrowed','unavailable']
         prompts = {
             1 : "\n".join([str(x)+' for '+ attribute_db[x] for x in range(len(attribute_db))]),
-            3 : "Enter the parameter number in a list with the first parameter chosen going first: ",
+            3 : "Enter the parameter number in a list with the parameter: ",
             4 : "Enter the subcategory/ies in the form of a list: ",
             5 : "Enter BookIDS of books you wish to use later if none enter -1",
             6 : "Looks like the book is unavailable: "
         }
         print(prompts[1])
-        param_selected = int(eval(input(prompts[3]))[0])
+        param_selected = int(eval(input(prompts[3])))
         if(param_selected in range(len(attribute_db))):
             if(param_selected not in [0,1,3]):
                 sql.select(self.cursor,[f'DISTINCT {param_selected}'])
                 subcats = eval(input(prompts[4]))
                 for subcat in subcats:
-                    sql.select(self.cursor,['*'],self.booksTable,[f"{attribute_db[param_selected]} = '{subcat}'"],['times_borrowed'],True)
+                    sql.select(self.cursor,['*'],self.booksTable,f"{attribute_db[param_selected]} = '{subcat}'",order_by=['times_borrowed'],desc = True)
             else:
                 approx_string = input("Enter a keyword/ID/ISBN: ")
-                result = sql.select(self.cursor,['*'],self.booksTable,[f'{attribute_db[param_selected]} LIKE "%{approx_string}%"'],print=0)
+                result = sql.select(self.cursor,['*'],self.booksTable,f'{attribute_db[param_selected]} LIKE "%{approx_string}%"',print=0)
                 if(not result):
                     print(prompts[6])
                     return
@@ -177,7 +140,8 @@ class Library():
                 return []
             else:
                 books_selected = [f"'{x.upper()}'" for x in books_selected]
-                sql.select(self.cursor,['*'],self.booksTable,[f'{attribute_db[param_selected]} IN ({books_selected})'])
+                sql.select(self.cursor,['*'],self.booksTable,[f'BookID IN ({books_selected})'])
+                return books_selected
         else:
             print("Wrong option!!")
             return -1
@@ -268,13 +232,65 @@ class Library():
                         User.contact = new_Attr
             
 
-    def admin_loop(Admin):
+    def admin_loop(self,Admin):
         prompts = {
-            1 : "Enter 1 to plot graphs\nEnter 2 to Remove User(s)\nEnter 3 to manage books\nEnter 4 to log out: ",
+            1 : "Enter 1 to plot graphs\nEnter 2 to Remove User\nEnter 3 to manage books\nEnter 4 to add a book\n5 to log out: ",
             2 : "Enter 1 to Search for Book(s) and 2 to enter directly: ",
+            3: "Enter UserID: ",
+            4 : "Enter the details of a new book as a list: ",
+            5 : "Enter bookID to manage: ",
+            6 : "Successfully logged out!"
         }
-        pass
+        while True:
+            choice = optionValidator(prompts[1],lower_limit=1,higher_limit=5)
+            if(choice == 5):
+                print(prompts[6])
+                return
+            elif(choice == 0):
+                pass
+            elif(choice == 1):
+                Admin.graphing()
+            elif(choice == 2):
+                user = input(prompts[3])
+                Admin.delete_user_account(user)
+            elif(choice == 3):
+                book = input(prompts[5])
+                Admin.edit_books(book)
+            else:
+                book_list = eval(input(prompts[4]))
+                sql.insert(self.cursor,self.booksTable,pd.DataFrame(),single_value=True,value_list=book_list)
+    
+    def main_loop(self):
+        prompts = {
+            1 : "Welcome to library!\nEnter 1 to login/sign-up\nEnter 2 to search for books\nEnter 3 to display general information\nEnter 4 to exit: ",
+            2 : "Thank you for using the library!"
+        }
+        temp_list = []
+        while True:
+            choice = optionValidator(prompts[1],lower_limit=1,higher_limit=4)
+            if(choice in [0,4]):
+                print(prompts[2])
+                break
+            elif(choice == 1):
+                CurUser = self.login_signUp()
+                if(CurUser == 0):
+                    pass
+                elif(CurUser == -2):
+                    CurUser = self.login_signUp()
+                else:
+                    if(CurUser[0] == 1):
+                        self.admin_loop(CurUser[1])
+                    else:
+                        self.user_loop(CurUser[1])
+            elif(choice == 2):
+                temp_list = self.searchBooks()
+            elif(choice == 3):
+                self.display_gen_information()
 
-def main_loop():
 
-    pass
+c = ''
+b = ''
+u = ''
+a = ''
+library = Library('ganesh','#25,23','560072','080-1234567',c,u,b,a)
+library.display_gen_information()

@@ -16,31 +16,26 @@ import matplotlib.pyplot as pl
 import sql_functions as sql
 
 # Book vs attribute graph:
-def BookVAttr(cursor,t_name,attribute):
+def BookVAttr(cursor,t_name,attribute,agg_type):
     book_attrs = ['quantity','timesBorrowed','price*quantity']
     # Price Graphs
-    if(len(attribute) == 1):
+    if(agg_type != 'count'):
         for b_attr in book_attrs:
-            query_str = sql.select(cursor,[attribute,f'sum({b_attr})'],t_name,group_by={attribute})
-            df = pd.read_sql_query(query_str,cursor)
+            df = sql.select(cursor,[attribute,f'{agg_type}({b_attr})'],t_name,group_by={attribute},print=0)
             pl.bar(list(df[0]),df[1]) 
             pl.xlabel(attribute)
             pl.title(f'{attribute} vs {b_attr}')
             pl.show()
-    else:
-        for b_attr in book_attrs:
-            query_str = sql.select(cursor,[b_attr],t_name,conditon=[f'{attribute[0]} = "{attribute[1]}"'])
-            df = pd.read_sql_query(query_str,cursor)
-            pl.hist(df[0],bins=40) 
-            pl.xlabel(attribute[1])
-            pl.title(f'{attribute[1]} vs {b_attr}')
-            pl.show()
-
+    else :
+        df = sql.select(cursor,[attribute,f'count(*)'],t_name,group_by=[attribute],print=0)
+        pl.bar(list(df[0]),df[1]) 
+        pl.xlabel(attribute)
+        pl.title(f'{attribute} vs {b_attr}')
+        pl.show()
 
 def UserStats(cursor,t_name,attribute):
     if(len(attribute) == 1):
-        query_str = sql.select(cursor,[attribute],t_name)
-        df = pd.read_sql_query(query_str,cursor)
+        df = sql.select(cursor,[attribute],t_name)
         pl.hist(df[0],bins=40)
         pl.xlabel(attribute)
         pl.title(f'{attribute} vs number')

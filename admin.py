@@ -1,16 +1,9 @@
-from .modules.mailing import send_mail,format_mail
+# from .modules.mailing import send_mail,format_mail
 from passlib.hash import bcrypt
 import getpass
-
-def pass_input(obj):
-    new_password = getpass.getpass(prompt="Enter new password: ")
-    re_entered_pass = getpass.getpass(prompt="Re-enter new password: ")
-    while new_password != re_entered_pass:
-        re_entered_pass = getpass.getpass(prompt="Incorrect! Passwords do not match! Re-enter: ")
-    hasher = bcrypt.using(rounds=13)
-    new_pass = hasher.hash(new_password)
-    obj.password = new_pass
-    return "Password changed successfully!"
+from modules.options import optionValidator,pass_input
+import graphing as graph
+import sql_functions as sql
 
 class Admin:
 
@@ -23,19 +16,75 @@ class Admin:
         self.cursor = cursor
         self.userTable = userTable
         self.booksTable = BooksTable
-    
-    def add_books(self):
-        pass
-    def drop_books(self):
-        pass
-    def edit_books(self):
-        pass
 
-    def update_user_dues(self,fees,userID):
-        pass
+
+    def edit_books(self,BookID):
+        prompts = {
+            1 : "Enter 1 to change quantity 2 to change price 3 to drop book from database: ",
+            2 : "Enter new value: ",
+            3 : "Successfully updated new value!",
+            4 : "Successfully dropped book!"
+        }
+        b_attr = {
+            1 : 'quantity',
+            2 : 'price'
+        }
+        choice = optionValidator(prompts[1],lower_limit=1,higher_limit=3)
+        if(choice == 0):
+            return
+        if(choice == 3):
+            sql.delete(self.cursor,self.booksTable,f'bookID = "{BookID}"')
+            print(prompts[4])
+            return
+        new_val = int(input(prompts[2]))
+        sql.update(self.cursor,self.booksTable,[b_attr[choice]],[new_val],f'bookID= "{BookID}"')
+        print(prompts[3])
 
     def delete_user_account(self,userID):
-        pass
+        sql.delete(self.cursor,self.userTable,f'userID = "{userID}"')
+        
 
     def graphing(self):
-        pass
+        prompts = {
+            1 : "Enter 1 to plot Book based graphs 2 to plot user based graphs and 3 to exit: ",
+            2 : "Enter 1 to plot max() 2 to plot min() 3 to plot total 4 to plot count() based graphs: ",
+            3 : "Enter 1 to plot wrt to publication 2 to plot wrt to author 3 to plot wrt to genre: ",
+            4 : "Enter 1 to plot histogram of count of borrowed_lists 2 to plot histogram of count of wish_list: "
+        }
+        agg_mode_dict= {
+            1 : 'max',
+            2 : 'min',
+            3 : 'sum',
+            4 : 'count'
+        }
+        attribute_dict = {
+            1 : 'publication',
+            2 : 'author',
+            3 : 'genre',
+            4 : 'count_borrowed_list',
+            5 : 'count_wish_list'
+        }
+        choice = optionValidator(prompts[1],lower_limit=1,higher_limit=3)
+        if(choice in [3,0]):
+            return
+        if(choice == 1):
+            aggregate_mode = optionValidator(prompts[2],lower_limit=1,higher_limit=4)
+            if(aggregate_mode ==0):
+                self.graphing()
+                return
+            attr_chosen = optionValidator(prompts[3],lower_limit=1,higher_limit=3)
+            if(attr_chosen == 0):
+                self.graphing()
+                return
+            aggregate = agg_mode_dict[aggregate_mode]
+            attribute = attribute_dict[attr_chosen]
+            graph.BookVAttr(self.cursor,self.booksTable,attribute,aggregate)
+        else:
+            attr_chosen = optionValidator(prompts[4],lower_limit=1,higher_limit=2)
+            if(attr_chosen == 0):
+                self.graphing()
+                return
+            attr = attribute_dict[attr_chosen + 3]
+            graph.UserStats(self.cursor,self.userTable,attr)
+
+            

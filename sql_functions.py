@@ -4,12 +4,7 @@
 # Most borrowed book etc.
 
 import pandas as pd
-import pyodbc 
 
-conn = pyodbc.connect('Driver={SQL Server};'
-        'Server=RON\SQLEXPRESS;'
-        'Database=test_database;'
-        'Trusted_Connection=yes;')
 
 def select(cursor,display_fields,tname,condition = None,group_by=None,having=None,order_by=None,desc=None,print=1):
     if(display_fields[0] == '*'):
