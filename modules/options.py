@@ -40,4 +40,4 @@ def ID_generation(seed):
         num = "".join((4-padding)*['0']) + str(num)
     else:
         num = str(num)
-    return num
+    return seed[:5] + num

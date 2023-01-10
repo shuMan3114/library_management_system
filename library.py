@@ -3,9 +3,10 @@ from admin import Admin
 from book import Book
 from datetime import date
 import pandas as pd
-import pyodbc 
+import pyodbc
 import getpass
 from passlib.hash import bcrypt
+import mysql.connector as m
 import sql_functions as sql
 from modules.options import optionValidator,pass_input,ID_generation
 
@@ -13,7 +14,7 @@ from modules.options import optionValidator,pass_input,ID_generation
 
 class Library():
 
-    def __init__(self,lib_name,address,postal_code,telephone,cursor,userTable,adminTable,booksTable,seeds=None):
+    def __init__(self,lib_name,address,postal_code,telephone,cursor,cnx,userTable,adminTable,booksTable,seeds=None):
         tdate = date.today()
 
         self.name = lib_name
@@ -21,6 +22,7 @@ class Library():
         self.postal_code = postal_code
         self.telephone = telephone
         self.cursor = cursor
+        self.cnx = cnx
         self.userTable = userTable
         self.adminTable = adminTable
         self.booksTable = booksTable
@@ -60,16 +62,16 @@ class Library():
                 return -2
             ID = input(prompts[3])
             if(level == 1):
-                search_result = sql.select(self.cursor,['*'],self.adminTable,f"ID = '{ID}'",print=0)
+                search_result = sql.select(self.cnx,['*'],self.adminTable,f"admnID = '{ID}'",printable=0)
             else:
-                search_result = sql.select(self.cursor,['*'],self.userTable,f"ID = '{ID}'",print=0)
-            if(search_result):
+                search_result = sql.select(self.cnx,['*'],self.userTable,f"UserID = '{ID}'",printable=0)
+            if(len(search_result)):
                 password = hasher.hash(getpass.getpass(prompts[4]))
-                verdict = optionValidator(prompts[4],error_prompt=prompts[6],check_value=search_result.password)
+                verdict = optionValidator(prompts[4],error_prompt=prompts[6],check_value=search_result.password[0])
                 if(verdict == password):
                     print("Log in success!")
                     if(level == 1):
-                        cur_user = Admin(search_result)
+                        cur_user = Admin(search_result,self.cursor,self.cnx,self.userTable,self.booksTable)
                     else:
                         cur_user = User(search_result)
                     return [level,cur_user]
@@ -79,6 +81,7 @@ class Library():
                 print(prompts[5])
                 return -2
         else:
+            emptyDf = pd.DataFrame()
             level = optionValidator(prompts[2],lower_limit=1,higher_limit=2)
             if(not level):
                 return -2
@@ -87,60 +90,61 @@ class Library():
             contact = input(prompts[9])
             if(level == 1):
                 ID = ID_generation(self.Aseed)
-                extra_fields = ['[]','[]','0']
-                search_result = sql.select(self.cursor,['*'],self.adminTable,f"contact = '{contact}'",print=0)
+                extra_fields = 0
+                search_result = sql.select(self.cnx,['*'],self.adminTable,f"contact = '{contact}'",printable=0)
             else:
                 ID = ID_generation(self.Useed)
-                extra_fields = []
-                search_result = sql.select(self.cursor,['*'],self.userTable,f"contact = '{contact}'",print=0)
-            if(search_result):
+                extra_fields = ["'[]'","'[]'"]
+                search_result = sql.select(self.cnx,['*'],self.userTable,f"contact = '{contact}'",printable=0)
+            if(len(search_result)):
                 print(prompts[12])
                 return -2
             new_pass = pass_input()
-            insert_vals = [f"'{ID}'",f"'{f_name}'",f"'{l_name}'",f"'{contact}'",f"'{new_pass}'"] + extra_fields
+            if(extra_fields != 0):
+                insert_vals = [f"'{ID}'",f"'{f_name}'",f"'{l_name}'",f"'{contact}'",f"'{new_pass}'"] + extra_fields
+            else:
+                insert_vals = [f"'{ID}'",f"'{f_name}'",f"'{l_name}'",f"'{contact}'",f"'{new_pass}'"]
             if(level ==1):
-                sql.insert(self.cursor,self.adminTable,single_value=True,value_list=insert_vals)
-                cur_user = Admin(sql.select(self.cursor,['*'],self.userTable,f"ID = '{ID}'",print=0))
+                sql.insert(self.cursor,self.adminTable,values=0,record_df=emptyDf,single_value=True,value_list=insert_vals)
+                cur_user = Admin(sql.select(self.cnx,['*'],self.adminTable,f"admnID = '{ID}'",printable=0),self.cursor,self.cnx,self.userTable,self.booksTable)
                 self.Aseed = ID
             else:
-                sql.insert(self.cursor,self.userTable,single_value=True,value_list=insert_vals)
-                cur_user = User(sql.select(self.cursor,['*'],self.userTable,f"ID = '{ID}'",print=0))
+                sql.insert(self.cursor,self.userTable,values=0,record_df=emptyDf,single_value=True,value_list=insert_vals)
+                cur_user = User(sql.select(self.cnx,['*'],self.userTable,f"UserID = '{ID}'",printable=0))
                 self.Useed = ID
             print("Sign Up Process complete!")
             return [level,cur_user]
 
 
     def searchBooks(self):
-        attribute_db = ['ID','name','author','ISBN','publication','genre','times_borrowed','unavailable']
+        attribute_db = ['BookID','name','author','ISBN','publication','genre','times_borrowed','unavailable']
         prompts = {
             1 : "\n".join([str(x)+' for '+ attribute_db[x] for x in range(len(attribute_db))]),
             3 : "Enter the parameter number in a list with the parameter: ",
             4 : "Enter the subcategory/ies in the form of a list: ",
-            5 : "Enter BookIDS of books you wish to use later if none enter -1",
+            5 : "Enter BookIDS of books you wish to use later if none enter [-1]: ",
             6 : "Looks like the book is unavailable: "
         }
         print(prompts[1])
         param_selected = int(eval(input(prompts[3])))
         if(param_selected in range(len(attribute_db))):
             if(param_selected not in [0,1,3]):
-                sql.select(self.cursor,[f'DISTINCT {param_selected}'])
+                distinct_vals = sql.select(self.cnx,[f'DISTINCT {attribute_db[param_selected]}'],self.booksTable,printable=0)
+                print(distinct_vals)
                 subcats = eval(input(prompts[4]))
                 for subcat in subcats:
-                    sql.select(self.cursor,['*'],self.booksTable,f"{attribute_db[param_selected]} = '{subcat}'",order_by=['times_borrowed'],desc = True)
+                    val = distinct_vals.iloc[subcat,0]
+                    sql.select(self.cnx,['*'],self.booksTable,f"{attribute_db[param_selected]} = '{val}'",order_by='times_borrowed',desc = True)
             else:
                 approx_string = input("Enter a keyword/ID/ISBN: ")
-                result = sql.select(self.cursor,['*'],self.booksTable,f'{attribute_db[param_selected]} LIKE "%{approx_string}%"',print=0)
-                if(not result):
-                    print(prompts[6])
-                    return
-                else:
-                    print(result)
+                result = sql.select(self.cnx,['*'],self.booksTable,f'{attribute_db[param_selected]} LIKE "%{approx_string}%"',printable=0)
+                print(result)
             books_selected = eval(input(prompts[5]))
-            if(books_selected[0] == "-1"):
+            if(books_selected[0] == -1):
                 return []
             else:
                 books_selected = [f"'{x.upper()}'" for x in books_selected]
-                sql.select(self.cursor,['*'],self.booksTable,[f'BookID IN ({books_selected})'])
+                sql.select(self.cnx,['*'],self.booksTable,f'BookID IN (""{",".join(books_selected)})')
                 return books_selected
         else:
             print("Wrong option!!")
@@ -179,7 +183,7 @@ class Library():
                 pass
             elif(option == 6):
                 print(prompts[4])
-                sql.update(self.cursor,self.userTable,list(User.__dict__.keys()),[f"'{str(x)}'" for x in list(User.__dict__.values())],f'ID = "{User.UserID}"')
+                sql.update(self.cursor,self.cnx,self.userTable,list(User.__dict__.keys()),[f"'{str(x)}'" for x in list(User.__dict__.values())],f'ID = "{User.UserID}"')
                 return 1
             elif(option in [1,2]):
                 optionsDict = {
@@ -196,7 +200,7 @@ class Library():
                     if(b_list[0] == -1):
                         pass
                     for b in b_list:
-                        new_book = Book(sql.select(self.cursor,['*'],self.booksTable,f"bookID = '{b}'"))
+                        new_book = Book(sql.select(self.cnx,['*'],self.booksTable,f"bookID = '{b}'"))
                         verdict = optionsDict[option](new_book)
                         if(verdict == -2):
                             u_input = optionValidator(prompts[6],lower_limit=1,higher_limit=2)
@@ -288,9 +292,16 @@ class Library():
                 self.display_gen_information()
 
 
-c = ''
-b = ''
-u = ''
-a = ''
-library = Library('ganesh','#25,23','560072','080-1234567',c,u,b,a)
-library.display_gen_information()
+
+
+#database connection
+cnx = m.connect(user='root', password='student',host='localhost',database='LIBRARY')
+cursor = cnx.cursor() 
+
+
+
+b = 'books'
+u = 'User'
+a = 'Admin'
+library = Library('ganesh','#25,23','560072','080-1234567',cursor,cnx,u,a,b)
+library.main_loop()

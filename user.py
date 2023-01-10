@@ -1,4 +1,4 @@
-import numpy as np
+# import numpy as np
 import getpass
 from datetime import date
 from passlib.hash import bcrypt
@@ -9,12 +9,12 @@ class User:
 
     def __init__(self,userDf):
         self.UserID = userDf['UserID'][0]
-        self.fname = userDf['first_name'][0]
-        self.lname = userDf['last_name'][0]
-        self.contact = userDf['email'][0]
+        self.fname = userDf['fname'][0]
+        self.lname = userDf['lname'][0]
+        self.contact = userDf['contact'][0]
         self.borrowedList = userDf['borrowedList'][0]
         self.wishlist = userDf['wishlist'][0]
-        self.password = userDf['hashed_password'][0]
+        self.password = userDf['password'][0]
     
 
     def borrow_book(self,Book):

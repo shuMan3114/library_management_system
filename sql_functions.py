@@ -6,7 +6,7 @@
 import pandas as pd
 
 
-def select(cursor,display_fields,tname,condition = None,group_by=None,having=None,order_by=None,desc=None,print=1):
+def select(cnx,display_fields,tname,condition = None,group_by=None,having=None,order_by=None,desc=None,printable=1):
     if(display_fields[0] == '*'):
         fields = "*"
     else:
@@ -28,18 +28,19 @@ def select(cursor,display_fields,tname,condition = None,group_by=None,having=Non
         query_str += f'ORDER BY {order_by} ASC;'
     else:
         query_str += ';'
-    out_df = pd.read_sql_query(query_str,cursor)
-    if(print):
+    print(query_str)
+    out_df = pd.read_sql(query_str,cnx)
+    if(printable):
         print(out_df)
     else:
         return out_df
 
 
-def update(cursor,t_name,updation_fields,new_values,condition):
+def update(cursor,cnx,t_name,updation_fields,new_values,condition):
     for i in range(len(updation_fields)):
         query_str = f'UPDATE {t_name} SET {updation_fields[i]} = {new_values[i]} WHERE {condition}'
         cursor.execute(query_str)
-        print("Updated Record",select(cursor,['*'],t_name,condition),sep="\n")
+        print("Updated Record",select(cnx,['*'],t_name,condition),sep="\n")
 
 
 def insert(cursor,t_name,values,record_df,value_list=None,single_value=False):
@@ -52,7 +53,8 @@ def insert(cursor,t_name,values,record_df,value_list=None,single_value=False):
             query_str += f'({",".join([str(x) for x in list(row_series.values)])}),'
         query_str = query_str[:-1] + ";"
     else:
-        query_str += f'({",".join([str(x) for x in single_value])}'
+        query_str += f'({",".join([str(x) for x in value_list])});'
+        print(query_str)
     cursor.execute(query_str)
 
 

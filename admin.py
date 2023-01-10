@@ -7,13 +7,14 @@ import sql_functions as sql
 
 class Admin:
 
-    def __init__(self,admnID,f_name,l_name,contact,hashed_password,cursor,userTable,BooksTable):
-        self.admnID = admnID
-        self.f_name = f_name
-        self.l_name = l_name
-        self.contact = contact
-        self.password = hashed_password
+    def __init__(self,adminDf,cursor,cnx,userTable,BooksTable):
+        self.admnID = adminDf['admnID']
+        self.f_name = adminDf['f_name']
+        self.l_name = adminDf['l_name']
+        self.contact = adminDf['contact']
+        self.password = adminDf['password']
         self.cursor = cursor
+        self.cnx = cnx
         self.userTable = userTable
         self.booksTable = BooksTable
 
@@ -37,7 +38,7 @@ class Admin:
             print(prompts[4])
             return
         new_val = int(input(prompts[2]))
-        sql.update(self.cursor,self.booksTable,[b_attr[choice]],[new_val],f'bookID= "{BookID}"')
+        sql.update(self.cursor,self.cnx,self.booksTable,[b_attr[choice]],[new_val],f'bookID= "{BookID}"')
         print(prompts[3])
 
     def delete_user_account(self,userID):
@@ -78,13 +79,11 @@ class Admin:
                 return
             aggregate = agg_mode_dict[aggregate_mode]
             attribute = attribute_dict[attr_chosen]
-            graph.BookVAttr(self.cursor,self.booksTable,attribute,aggregate)
+            graph.BookVAttr(self.cnx,self.booksTable,attribute,aggregate)
         else:
             attr_chosen = optionValidator(prompts[4],lower_limit=1,higher_limit=2)
             if(attr_chosen == 0):
                 self.graphing()
                 return
             attr = attribute_dict[attr_chosen + 3]
-            graph.UserStats(self.cursor,self.userTable,attr)
-
-            
+            graph.UserStats(self.cnx,self.userTable,attr)
